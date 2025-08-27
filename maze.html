@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Maze Generator & Solver</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<h2>Maze Generator & Solver</h2>
+
+<label>Rows: <input type="number" id="rowsInput" value="20" min="5" max="50"></label>
+<label>Cols: <input type="number" id="colsInput" value="20" min="5" max="50"></label>
+<button id="regenBtn">Regenerate Maze</button>
+<button id="solveBtn">Solve Maze</button>
+
+<canvas id="mazeCanvas" width="600" height="600"></canvas>
+
+
+<!-- External JS files -->
+<script src="maze_generator.js"></script>
+<script src="maze_solver.js"></script>
+
+</body>
+</html>

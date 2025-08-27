@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Maze Tests</title>
+  <style>
+    body { font-family: system-ui, Arial; padding: 16px; }
+    .pass { color: #0a7; }
+    .fail { color: #c00; }
+  </style>
+</head>
+<body>
+  <h1>Maze Tests</h1>
+  <div id="out"></div>
+
+  <!-- Include your maze code first -->
+  <script src="maze_generator.js"></script>
+  <script src="maze_solver.js"></script>
+
+  <script>
+    const out = document.getElementById('out');
+    function log(ok, msg){ 
+      const p = document.createElement('p');
+      p.className = ok ? 'pass' : 'fail';
+      p.textContent = (ok ? '✓ ' : '✗ ') + msg;
+      out.appendChild(p);
+      if (!ok) console.error(msg);
+    }
+
+    // helpers (adapt to your internal grid representation)
+    function isBorderCell(rows, cols, r, c) {
+      return r === 0 || c === 0 || r === rows-1 || c === cols-1;
+    }
+    function allCells(rows, cols){ 
+      const a=[]; for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)a.push([r,c]); return a;
+    }
+    function gridNeighbors(grid, r, c) {
+      // Use your own function; example using wall flags:
+      const ns = [];
+      const cell = grid[r][c];
+      if (!cell.top   && r>0)         ns.push([r-1,c]);
+      if (!cell.right && c<grid[0].length-1) ns.push([r, c+1]);
+      if (!cell.bottom&& r<grid.length-1) ns.push([r+1,c]);
+      if (!cell.left  && c>0)         ns.push([r, c-1]);
+      return ns;
+    }
+    function reachableCount(grid, start) {
+      const rows = grid.length, cols = grid[0].length;
+      const seen = Array.from({length:rows},()=>Array(cols).fill(false));
+      const q = [start]; seen[start[0]][start[1]] = true;
+      let count = 1;
+      while(q.length){
+        const [r,c]=q.shift();
+        for(const [nr,nc] of gridNeighbors(grid,r,c)){
+          if(!seen[nr][nc]){
+            seen[nr][nc]=true; count++; q.push([nr,nc]);
+          }
+        }
+      }
+      return count;
+    }
+    function isValidPath(grid, path, start, end){
+      if (!path || path.length === 0) return false;
+      const same = (a,b)=>a[0]===b[0]&&a[1]===b[1];
+      if (!same(path[0], start)) return false;
+      if (!same(path[path.length-1], end)) return false;
+      for(let i=1;i<path.length;i++){
+        const [r,c]=path[i-1], [nr,nc]=path[i];
+        const adj = gridNeighbors(grid,r,c).some(([ar,ac])=> ar===nr && ac===nc);
+        if(!adj) return false;
+      }
+      return true;
+    }
+
+    // === TESTS ===
+    (function run(){
+      const rows=20, cols=20;
+      const { grid, start, end } = generateMaze(rows, cols); // expose this from your code
+
+      // 1) Dimensions
+      log(grid.length===rows && grid[0].length===cols, 'Grid has correct dimensions');
+
+      // 2) Walls reciprocal
+      let reciprocalOK = true;
+      for (let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const cell = grid[r][c];
+          if (c<cols-1){
+            const right = grid[r][c+1];
+            if (cell.right !== !right.left) reciprocalOK=false;
+          }
+          if (r<rows-1){
+            const down = grid[r+1][c];
+            if (cell.bottom !== !down.top) reciprocalOK=false;
+          }
+        }
+      }
+      log(reciprocalOK, 'Walls are reciprocal/bidirectional');
+
+      // 3) Start/End on border
+      log(isBorderCell(rows, cols, start[0], start[1]), 'Start is on border');
+      log(isBorderCell(rows, cols, end[0], end[1]),     'End is on border');
+
+      // 4) Connectivity (perfect maze)
+      const reachable = reachableCount(grid, start);
+      log(reachable === rows*cols, 'All cells are reachable (perfect maze)');
+
+      // 5) Path exists
+      const bfsPath = bfsSolve(grid, start, end); // expose from your solver
+      log(!!bfsPath && bfsPath.length>0, 'Solver returns a path from start to end');
+      log(isValidPath(grid, bfsPath, start, end), 'Returned path is valid');
+
+      // 6) BFS shortest-path property
+      // Recompute shortest distance by plain BFS over cells:
+      const dist = Array.from({length:rows},()=>Array(cols).fill(Infinity));
+      const q=[[...start]]; dist[start[0]][start[1]]=0;
+      while(q.length){
+        const [r,c]=q.shift();
+        for(const [nr,nc] of gridNeighbors(grid,r,c)){
+          if (dist[nr][nc]===Infinity){
+            dist[nr][nc]=dist[r][c]+1; q.push([nr,nc]);
+          }
+        }
+      }
+      log(bfsPath.length-1 === dist[end[0]][end[1]], 'BFS path is shortest');
+
+      // 7) Optional hardness: ensure path is long enough (e.g., ≥ rows+cols)
+      const minLen = rows + cols - 2;
+      log((bfsPath.length-1) >= minLen, `Path length ≥ ${minLen} (hardness check)`);
+
+      console.log('All tests done.');
+    })();
+  </script>
+</body>
+</html>
